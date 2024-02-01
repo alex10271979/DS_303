@@ -1,0 +1,184 @@
+---
+title: "Homework 3 DS 303"
+author: "Alexis Maldonado"
+date: "9/10/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+head(Carseats)
+?Carseats
+```
+
+1.a
+```{r}
+
+mlrmodel <- lm(Sales ~ CompPrice + Income + Advertising + Population + Price + Age + Education + Urban + US, data = Carseats)
+summary(mlrmodel)
+```
+Chosen regression coefficeint: Population
+H0: Bpop = 0
+H1: Bpop != 0
+
+Test Static: -0.286
+
+Null Distribution: Assume H0 is true,  F9 and 390
+
+P-Value: 0.774780 
+
+Conclusion: 
+Since 0.77 is not smaller than 0.05 we do not reject H0, meaning that we do not have evidence that Population is significally different from 0, at sigificance level 0.05.
+
+
+
+1.b
+```{r}
+summary(mlrmodel)$sigma
+```
+Residual standard error: 1.932. This value represent the average distance we are from the mean. 
+
+1.c
+```{r}
+coef(mlrmodel)["Advertising"]
+```
+Advertising estimate 0.1369399 can be interpreted as the average change in Y with a 1 unit change in X, holding all other predictors constant.
+
+1.d
+```{r}
+reducedmodel <- lm(Sales ~ CompPrice + Income + Advertising + Population + Price + Age + Education + Urban, data = Carseats)
+
+sum(residuals(mlrmodel)^2)
+sum(residuals(reducedmodel)^2)
+```
+full model = 1456.031
+reduced model = 1456.557
+
+1.e
+```{r}
+summary(mlrmodel)$df
+summary(reducedmodel)$df
+((1456.557 - 1456.031)/(391-390)) / (1456.031/ 390)
+summary(mlrmodel)
+```
+H0: all predictors are equal
+H1: atleast one predictor != 0
+
+F-test: 51.38
+
+Null Distribution: F 9,390
+
+P-Value: 2.2e-16
+
+Conclusion: 
+We reject H0: we find evidence of a relationship between Y
+and at least one of the predictors, at significance level 0.05.
+
+
+1.f
+```{r}
+mean(Carseats$CompPrice)
+mean(Carseats$Income)
+summary(mlrmodel)
+
+Xh = data.frame(CompPrice = 124.97, Income = 68.65, Advertising = 15, Population = 500, Price = 50, Age = 30, Education = 10, Urban = "Yes", US = "Yes")
+predict(mlrmodel,newdata=Xh,interval='confidence',level=0.95)
+```
+15.80 is the estimate.
+from the confidence interval we get a fit of 15.80203, lower interval of 14.91442, and upper of 16.68965
+
+1.g
+```{r}
+ans = 7.8243876 + 124.975 * (0.0942545) + 68.6575 * (0.0130501) + 15 * (0.1369399) + 500 * (-0.0002007) + 50 * (-0.0924395) + 30 * (-0.0447919) + 10 * (-0.0423034) + 1 * (-0.1559036) + 1 * (-0.1062926)
+ans
+predict(mlrmodel, newdata=Xh,interval='prediction',level=0.95)
+```
+15.80 is the prediction
+from the prediction interval we get a fit of 15.80203, lower interval of 11.90087, and upper of 19.70319.
+1.h
+```{r}
+Xh1 = data.frame(CompPrice = 124.97, Income = 68.65, Advertising = 15, Population = 500, Price = 450, Age = 30, Education = 10, Urban = "Yes", US = "Yes")
+predict(mlrmodel, newdata=Xh1,interval='prediction',level=0.95)
+```
+the prediction is -21.17377, which does not make sense. One of the limitations must be around price since by going to the extreme price it completely over took the outcome of the value
+
+--------------------------------------------------------------------------------
+
+2.a
+We should expect to make m /α type 1 errors.
+
+2.b
+P(V ≥ 1) = 1 - (1 - α)^m
+
+2.c
+A setting where this could be a real problem could be when your working with medicine and all the other variables are making the drug look better than it really is.
+
+2.d
+Yes is makes sense beacuse your lowering the amount of false positives. 
+1 - [(1 - α/m)^m]
+
+2.e
+```{r}
+x = matrix(NA,1000,200)
+
+for(i in 1:200){ 
+    x[,i] = rnorm(1000) 
+ }
+
+beta0 = 1 
+beta1 = 2 
+beta2 = 3 
+beta3 = 4 
+beta4 = 5 
+beta5 = 6
+
+error = rnorm(1000,0,1)
+y = beta0 + beta1*x[,1] + beta2*x[,2] + beta3*x[,3] + beta4*x[,4] + beta5*x[,5] + error
+
+data = as.data.frame(cbind(y,x)) 
+
+fit = lm(y~.,data=data) 
+
+p_values = summary(fit)$coefficients[,4]
+length(which(p_values<0.05/200))
+```
+6 predictors are signifacant compared to the 8 before.
+
+2.f
+Although it does lower the predictors one thing that could back firing is that you could miss important predictors that didnt make the cut.
+
+
+--------------------------------------------------------------------------------
+
+3.a
+1. Relationship between Y and X is linear
+2. E (e) = 0
+3. Var(e) = σ2
+4. e’s are uncorrelated
+
+
+3.b
+True, when fitting a multiple linear regression we assume that random error is 0.
+ 
+
+3.c
+True, the out does show us individual p-value based on the information given while assuming the random error are normally distributed.
+
+3.d
+Its not sufficient to check every pairwaise scatterplot between the 2 because visually they arent as reliable as other and arent always able to show us the whole picture at time, using other graphs and/or techniques would be better to fully grasps the relationship between the two.
+
+3.e
+```{r}
+m1 = lm(mpg~horsepower,data=Auto)
+summary(m1)
+par(mfrow=c(2,2))
+plot(m1)
+
+m2 = lm(mpg~ weight + horsepower,data=Auto)
+plot(m2)
+BIC(m1)
+BIC(m2)
+
+```
+By adding another variable we are able to bring down the BIC for m2 being 2265.89 compared to 2375.237 the BIC for m1. So it is an improvemnt.

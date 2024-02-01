@@ -1,0 +1,199 @@
+---
+title: "hw12"
+author: "Alexis Maldonado"
+date: "12/3/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1.a
+To check whether or not the clusters we have found actually represent real groups we can check the variation within the cluster, the smaller the better bigger problem means its clustering the noise.
+
+1.b
+i. 
+Not enough information to tell.
+
+ii.
+They will fuse at the same height.
+
+1.c
+i.
+```{r}
+pr.out = prcomp(USArrests,scale=TRUE)
+pr.out$sdev^2 / sum(pr.out$sdev^2)
+```
+ii.
+```{r}
+loadings = as.matrix(scale(USArrests))%*%pr.out$rotation
+apply(loadings^2, 2, sum)/sum(apply(loadings^2, 2, sum))
+```
+
+1.d
+
+.-------------------------------------------------------------------------------
+
+2.a
+```{r}
+set.seed(1)
+set.seed(1)
+c1 = c2 = c3 = matrix(NA,nrow=20,ncol=50)
+for(i in 1:20){
+c1[i,]= rnorm(50,2,1.5)
+c2[i,] = rnorm(50,3,1.5)
+c3[i,] = rnorm(50,4,1.5)
+}
+data = rbind(c1,c2,c3)
+```
+
+2.b
+```{r}
+pr.data = prcomp(data)
+(pr.data$sdev^2/sum(pr.data$sdev^2))[1:2]
+```
+
+2.c
+They are wrong because they are assuming that they believe that the dimesions should be equally intresting which isnt true. Pca does not try to find the most important so pca finds the direction with most variance. 
+
+2.d
+```{r}
+plot(pr.data$x[,1:2], col = rep(1:3, each = 20))
+```
+
+2.e
+```{r}
+trueClassLabels = rep(1:3, each = 20)
+km3 = kmeans(data,3,nstart=20)
+table(trueClassLabels, km3$cluster)
+```
+They are not even one has 21 19 20 and the other 20 20 20
+
+2.f
+```{r}
+km2 = kmeans(data,2,nstart=20)
+table(trueClassLabels, km2$cluster)
+```
+They are not even one has 21 29 and the other 20 20 20
+
+2.g
+```{r}
+km4 = kmeans(data,4,nstart=20)
+table(trueClassLabels, km4$cluster)
+```
+They are not even one has 19 16 20 5 and the other 20 20 20
+
+2.h
+```{r}
+km = kmeans(pr.data$x[, 1:2],3,nstart=20)
+table(trueClassLabels, km$cluster)
+```
+They are not even one has 18 22 20 and the other 21 19 20 it was of by one so it did worse than the raw data.
+
+.-------------------------------------------------------------------------------
+
+
+3.
+```{r}
+fit.svd = function(X, M) {
+  svdob = svd(X)
+  with(svdob,
+       u[, 1:M, drop = FALSE] %*%
+         (d[1:M] * t(v[, 1:M, drop = FALSE]))
+  )
+}
+
+func = function(X, ina, inb, M, print){
+  Xna = X
+  index.na = cbind(ina, inb)
+  Xna[index.na] = NA
+
+  Xhat = Xna
+  xbar = colMeans(Xna, na.rm = TRUE)
+  Xhat[index.na] = xbar[inb]
+  
+  thresh = 1e-7
+  rel_err = 1
+  iter = 0
+  ismiss = is.na(Xna)
+  mssold = mean((scale(Xna, xbar, FALSE)[!ismiss])^2)
+  mss0 = mean(Xna[!ismiss]^2)
+  
+  while(rel_err > thresh && iter < 50) {
+    iter = iter + 1
+    # Step 2(a)
+    Xapp = fit.svd(Xhat, M)
+    # Step 2(b)
+    Xhat[ismiss] = Xapp[ismiss]
+    # Step 2(c)
+    mss = mean(((Xna - Xapp)[!ismiss])^2)
+    rel_err = (mssold - mss) / mss0
+    mssold = mss
+    if (print == TRUE){
+      cat("Iter:", iter, "MSS:", mss, "Rel. Err:", rel_err, "\n")
+    }
+  }
+  mss
+}
+```
+
+```{r}
+library(ISLR2)
+boston = data.matrix(scale(Boston))
+avg_errors = matrix(0, nrow = 10, ncol = 8)
+
+for (i in 1:10) {
+  for (percentage in seq_along(seq(0.05, 0.3, by = 0.05))) {
+    nomit = round(nrow(boston) * percentage)
+    ina = sample(seq(nrow(boston)), nomit, replace = TRUE)
+    inb = sample(1:ncol(boston), nomit, replace = TRUE)
+    
+    for (M in 1:8) {
+      avg_error = 0
+      print = FALSE
+      error = func(boston, ina, inb, M, print)
+      avg_errors[i, M] = avg_errors[i, M] + error/10
+    }
+  }
+}
+plot(x = 1:8, colSums(avg_errors))
+```
+
+.-------------------------------------------------------------------------------
+
+4.a
+```{r}
+gene = read.csv("/Users/alexrubio/Downloads/Ds303/gene.csv", header = F)
+corM = cor(gene)
+distM = dist(cor(gene))
+hc = hclust(distM, method="complete")
+hc1 = hclust(distM, method="single")
+hc2 = hclust(distM, method="average")
+hc3 = hclust(distM, method="centroid")
+plot(hc)
+plot(hc1)
+plot(hc2)
+plot(hc3)
+```
+Yes they split into two groups, yes if switched the dendrogram is not the same as it was most will still have a two way split but it wont be exactly the same.
+
+4.b
+1,000 genes could be too much to handle for the 3 since the data set would considered a high dimensional data set which would make it harder for the models to handle.
+
+4.c
+```{r}
+library(caret)
+pca = prcomp(gene, scale = TRUE)
+gene1 = gene
+gene1$Y = as.factor(c(rep(0, 20), rep(1, 20)))
+
+ppca = predict(pca, newdata = gene1)[, 1:10]
+
+model = glm(Y ~ ., data = data.frame(Y = gene1$Y, ppca), family = binomial)
+
+predictions = predict(model, type = "response") > 0.5
+
+table(predictions, gene1$Y)
+mean(as.numeric(predictions) != as.numeric(gene1$Y))
+```

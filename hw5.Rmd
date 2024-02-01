@@ -1,0 +1,230 @@
+---
+title: "hw5 ds303"
+author: "Alexis Maldonado"
+date: "10/1/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(leaps)
+library(corrplot)
+```
+
+1.a
+Yhat = 41.5 + (-0.12 * x1) + (0.05 * x2) + (2.87 * x3) + (-18.26 * x4) + (3.67 * x5) + ( -1.52* x6) + (0.28 * x7) + (-0.01 * x8) + (-0.93 * x9) + (-0.55 * x210)
+```{r}
+summary(lm(medv ~ crim + zn + chas + nox + rm + dis + rad + tax + ptratio + lstat, data=Boston))
+
+datatable1 = matrix(c(41.451747, 4.903283, 8.454, '3.18e-16', -0.121665, 0.032919, -3.696, 0.000244, 0.046191, 0.013673, 3.378, 0.000787, 2.871873, 0.862591, 3.329, 0.000935, -18.262427, 3.565247, -5.122, '4.33e-07', 3.672957, 0.409127, 8.978, '2e-16', -1.515951, 0.187675, -8.078, '5.08e-15', 0.283932, 0.063945, 4.440, '1.11e-05', -0.012292, 0.003407, -3.608, 0.000340, -0.930961, 0.130423, -7.138, '3.39e-12', -0.546509, 0.047442, -11.519, '2e-16'), ncol=4, byrow=TRUE)
+colnames(datatable1) = c('Estimate', 'Std. Error', 't value', 'Pr(>|t|)')
+rownames(datatable1) <- c('intercept', 'zn','chas','nox','rm' ,'dis','rad','tax','ptratio','lstat','medv')
+as.table(datatable1)
+
+round(cor(Boston),1)
+x = subset(Boston, select = - medv)
+for (col in names(x)) {
+  plot(x = x[[col]]-1, y = Boston$medv,
+    xlab = col,
+    ylab = "medv",
+    main = "x vs y"
+)
+}
+
+
+best.model = regsubsets(medv~., data = Boston, nbest=1, nvmax=12)
+summary(best.model)
+
+n = dim(Boston)[1]
+set.seed(1)
+train_index = sample(1:n,n/2,rep=FALSE)
+
+train = Boston[train_index,]
+test = Boston[-train_index,]
+
+val.errors = rep(NA,12)
+for(i in 1:12){
+  test.mat = model.matrix(medv~.,data=Boston)
+  
+  coef.m = coef(best.model,id=i)
+  
+  pred = test.mat[,names(coef.m)]%*%coef.m
+  val.errors[i] = mean((Boston$medv)^2)
+}
+
+regfitt = regsubsets(medv~., data = Boston, nbest = 1, nvmax = 12)
+
+regfitt.sum = summary(regfitt)
+
+p = rowSums(regfitt.sum$which)
+adjr2 = regfitt.sum$adjr2
+cp = regfitt.sum$cp
+rss = regfitt.sum$rss
+AIC = n*log(rss/n) + 2*(p)
+BIC = n*log(rss/n) + (p)*log(n)
+cbind(rss,AIC,BIC,adjr2,cp)
+
+which.min(AIC)
+which.min(BIC)
+which.min(cp)
+which.max(adjr2)
+coef(regfitt,10)
+
+```
+
+1.b
+Since in class we discussed not removing any variables if possible I check for indepenancy and found it so I chose to run the best model selection with all the independent variables and all but chas had linear relationships with medv. After running the best model selection I kept the chas variable since it showed up in half of the best models.
+
+1.c 
+After that i check to see which model had the lowest Aic and Bic aswell as cp and r^2 and model ten was picked each time.
+```{r}
+m10 = lm(medv ~ crim + zn + chas + nox + rm + dis + rad + tax + ptratio + lstat, data=Boston)
+plot(m10)
+
+
+m11 = lm(medv ~ crim + zn + chas + nox + rm + dis + rad + tax + ptratio + lstat + age, data=Boston)
+plot(m11)
+```
+
+1.d
+we assume a linear relationship between the independet variable and 
+the depedent and got it for most of them as well as check for independency aswell as checking the plots to make sure there were no patterns for normality. 
+
+1.e
+For this I checed multicollinearity but didnt really any varibble with too high of correlation.
+
+2.a
+I would assume the the best subset model will have the smallest training MSE because it makes a model for each value from 1 to the amount of predictor and return the model with the smallest rss which will eventually get the small rss possible. Since mse = rss/n we can assume that the best selection will give the smallest MSE.
+
+2.b
+Best subset will be able to go through more models and pick a lower training mse but is more prone to overfitting causing the test mse to rise how still have a better chance at finding lower test mse since it pick between more models
+
+2.c
+Yes they lead me to pick the same model. The best model for AIC was 12 on both 1795991.
+```{r}
+head(College)
+n = dim(College)[1]
+set.seed(1)
+train_i = sample(1:n,n*.9,rep=FALSE)
+
+train = College[train_i,]
+test = College[-train_i,]
+
+regfit.fwd = regsubsets(Apps~.,data=College,nvmax=17, method="forward")
+regfit.bwd = regsubsets(Apps~.,data=College,nvmax=17, method="backward")
+
+regfit.fwd.sum = summary(regfit.fwd)
+names(regfit.fwd.sum)
+n = dim(College)[1]
+p = rowSums(regfit.fwd.sum$which) #number of predictors + intercept in the model 
+adjr2 = regfit.fwd.sum$adjr2
+cp = regfit.fwd.sum$cp
+rss = regfit.fwd.sum$rss
+AIC = n*log(rss/n) + 2*(p)
+BIC = n*log(rss/n) + (p)*log(n)
+
+which.min(AIC)
+which.min(BIC)
+which.max(adjr2)
+which.min(cp)
+
+regfit.bwd.sum = summary(regfit.bwd)
+names(regfit.bwd.sum)
+nb = dim(College)[1]
+pb = rowSums(regfit.bwd.sum$which)
+adjr2b = regfit.bwd.sum$adjr2
+cpb = regfit.bwd.sum$cp
+rssb = regfit.bwd.sum$rss
+AICb = n*log(rss/nb) + 2*(pb)
+BICb = n*log(rss/nb) + (pb)*log(nb)
+
+which.min(AICb)
+which.min(BICb)
+which.max(adjr2b)
+which.min(cpb)
+
+
+model0 = lm(Apps~1,data=College)
+summary(model0)
+
+modelfull = lm(Apps~.,data=College)
+summary(modelfull)
+
+library(MASS)
+?stepAIC
+
+stepAIC(model0,scope=list(lower=model0,upper=modelfull),direction="forward")
+
+stepAIC(modelfull,scope=list(lower=model0,upper=modelfull),direction="backward")
+
+model_train = lm(formula = Apps ~ Private + Accept + Enroll + Top10perc + Top25perc + F.Undergrad + P.Undergrad + Outstate + Room.Board + PhD + Expend + Grad.Rate, data = College)
+
+MSE_train = mean((train$Apps - model_train$fitted.values)^2) 
+MSE_train
+
+predicted_values = predict(model_train,test) 
+MSE_test = mean((test$Apps - predicted_values)^2)
+MSE_test
+
+
+model_trainb = lm(formula = Apps ~ Accept + Top10perc + Expend + Outstate + Enroll + Room.Board + Top25perc + Private + PhD + Grad.Rate + F.Undergrad + P.Undergrad, data = College)
+
+MSE_trainb = mean((train$Apps - model_trainb$fitted.values)^2) 
+MSE_trainb
+
+predicted_valuesb = predict(model_trainb,test) 
+MSE_testb = mean((test$Apps - predicted_valuesb)^2)
+MSE_testb
+```
+
+3.
+In this graph we see that even though the two variable are not statistically significants we still see a very small p vale over all with high std error.
+
+4.a
+```{r}
+
+Credit$Own = factor(Credit$Own)
+Credit$Student= factor(Credit$Student)
+Credit$Married = factor(Credit$Married)
+Credit$Region = factor(Credit$Region)
+head(Credit)
+```
+
+4.b
+```{r}
+fit = lm(Balance~ Income+ Student,data=Credit)
+summary(fit)
+
+```
+
+4.c
+Student: Yhat = 593.8135 + 5.9843*Income 
+Non Student: Yhat = 211.1430 + 5.9843*Income
+
+4.d
+for both
+A one unit increase in income is associated with an increase of 5.9843 units in credit, controlling for the other predictors.
+
+4.e
+When looking at the plot below we can see that it doesnt really make sense the Income grows at the same rate for student and non student
+```{r}
+library(ggplot2)
+
+ggplot(Credit, aes(x = Income, y = Balance, color = Student)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+4.f
+Student: Yhat = 677.299 + 4.2188*Income 
+Non Student: Yhat = 200.6232 + 6.2182*Income
+```{r}
+summary(lm(Balance ~ Income + Student + Income:Student, data=Credit))
+```
+
+4.g
+Student:
+A one unit increase in income is associated with an increase of 4.2188 units in credit, controlling for the other predictors.
+NonStudent:
+A one unit increase in income is associated with an increase of 6.2182 units in credit, controlling for the other predictors.

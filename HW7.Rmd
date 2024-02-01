@@ -1,0 +1,298 @@
+---
+title: "hw7"
+author: "Alexis Maldonado"
+date: "10/13/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(glmnet)
+```
+
+1.a 
+With lasso we are able to get some of the coeffiecients to be 0 while ridge can always be very small but never 0. This is thanks to the difference between the constraints, lassos constraint (abs) shows up as a diamond in the graph allowing the sum of squares be able to land on the corrdinates edge. Where as in ridge its a circle (^2)so it can get close but will never intercept at a place to make the coef 0.
+
+As lambda increases our model becomes less flexible 
+1.b.a
+iii. steadily increase
+
+1.b.b
+ii. decrease initially, and the eventually start increasing in an inverted U shape
+
+1.b.c
+iv. steadily decrease
+
+1.b.d
+iii. steadily increase
+
+1.b.e
+v. remain constant
+
+
+.---------------------------------------------------------------------
+2.a
+```{r}
+Hitters = na.omit(Hitters)
+n = nrow(Hitters) #there are 263 observations
+x = model.matrix(Salary ~.,data=Hitters)[,-1] #19 predictors
+Y = Hitters$Salary
+set.seed(1)
+train = sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+Y.test = Y[test]
+```
+
+2.b
+```{r}
+grid = 10^seq(10,-2,length=100)
+ridge.train = glmnet(x[train,],Y[train],alpha=0,lambda=grid)
+cv.outRidge = cv.glmnet(x[train,],Y[train],alpha = 0, lambda = grid) 
+plot(cv.outRidge)
+lambdaRidgeMin = cv.outRidge$lambda.min
+lambdaRidgeMin
+```
+
+2.c 
+```{r}
+lambdaRidgeLse = cv.outRidge$lambda.1se
+lambdaRidgeLse
+```
+
+2.d
+```{r}
+lasso.train = glmnet(x[train,],Y[train],alpha=1,lambda=grid)
+cv.outLasso = cv.glmnet(x[train,],Y[train],alpha = 1, lambda = grid) 
+plot(cv.outLasso)
+lambdaLassoMin = cv.outLasso$lambda.min
+lambdaLassoMin
+```
+
+2.e
+```{r}
+lambdaLassoLse = cv.outLasso$lambda.1se
+lambdaLassoLse
+```
+
+2.f
+```{r}
+ridge.pred = predict(ridge.train,s=lambdaRidgeMin,newx=x[test,])
+mean((ridge.pred-Y.test)^2)
+
+ridgeLse.pred = predict(ridge.train,s=lambdaRidgeLse,newx=x[test,])
+mean((ridgeLse.pred-Y.test)^2)
+
+lassso.pred = predict(lasso.train,s=lambdaLassoMin,newx=x[test,])
+mean((lassso.pred-Y.test)^2)
+
+lassoLse.pred = predict(lasso.train,s=lambdaLassoLse,newx=x[test,])
+mean((lassoLse.pred-Y.test)^2)
+```
+
+2.g
+```{r}
+finalR = glmnet(x,Y,alpha=0,lambda = lambdaRidgeMin)
+coef(finalR)
+
+finalRL = glmnet(x,Y,alpha=0,lambda = lambdaRidgeLse)
+coef(finalRL)
+
+
+finalL = glmnet(x,Y,alpha=1,lambda = lambdaLassoMin)
+coef(finalL)
+
+
+finalLL = glmnet(x,Y,alpha=1,lambda = lambdaLassoLse)
+coef(finalLL)
+```
+Comparing ridge and lasso: 
+lasso coeffieceints that are zero have greater values
+clearly all variables show up in ridge
+
+
+Comparing lambda min and LSE:
+Intercepts for LSE way higher
+min coef have greater values
+
+2.h
+```{r}
+grid = 10^seq(10,-2,length=100)
+alpha = seq(0.01, 0.99, by=0.01)
+
+cv_error = rep(NA,length(alpha))
+
+for (i in 1:length(alpha)){
+  cv_elastic = cv.glmnet(x[train,], Y[train], alpha = alpha[i], lambda=grid)
+  cv_error[i] = min(cv_elastic$cvm)
+}
+
+alphaEnet = alpha[which.min(cv_error)]
+elastic_cv = cv.glmnet(x[train,], Y[train], alpha = alphaEnet,lambda=grid)
+lambdaEnet =elastic_cv$lambda.min
+
+alphaEnet
+lambdaEnet
+```
+2.i
+```{r}
+enet.train = glmnet(x[train,],Y[train],alpha=alphaEnet,lambda=grid)
+
+enet.pred = predict(enet.train,s=lambdaEnet,newx=x[test,])
+mean((enet.pred-Y.test)^2)
+```
+
+2.j 
+The model that performs best based on mse would be the original rigde regression, this would probably because there is a good amount of predictors that are actually related to Y.
+
+2.k
+I would tell them to focus on there hits, runs and walks.
+
+
+.---------------------------------------------------------------------
+3.a
+```{r}
+u = mean(Boston$medv)
+u
+```
+
+3.b
+```{r}
+sqrt(sum((Boston$medv-mean(Boston$medv))^2)/(n-1))/sqrt(n)
+```
+meaning that this value (~0.04) is the average of spread we expect to see.
+
+3.c
+```{r}
+B = 2000
+muHat_boot = rep(NA, B)
+n = dim(Boston)[1]
+for(b in 1:B){
+  index = sample(1:n,n,replace = TRUE)
+  bootsample = Boston[index,]
+  muHat_boot[b] = mean(bootsample$medv)
+}
+
+sqrt(sum((muHat_boot-mean(muHat_boot))^2)/(B-1))
+```
+The amountts are very similar.
+
+3.d
+```{r}
+beta0_star = summary(lm(medv~.,data=Boston))$coef[1,1]
+se_b0_star = summary(lm(medv~.,data=Boston))$coef[1,2]
+
+B = 500
+m = 100
+Fstar = rep(0,B)
+beta0_m = rep(0,m)
+
+for(b in 1:B){
+  index = sample(1:n,n,replace=TRUE)
+  bootsample=Boston[index,]
+  fit = lm(medv~.,data=bootsample)
+  beta0 =  coef(fit)[1]
+  for(i in 1:m){
+    index2 = sample(index,n,replace=TRUE)
+    bootsample2 = Boston[index2,]
+    fit2 = lm(medv~.,data=bootsample2)
+    beta0_m[i] = coef(fit2)[1]
+  }
+  se_b0 = sqrt(sum((beta0_m-mean(beta0_m))^2)/(m-1))
+
+  Fstar[b] = (beta0 - beta0_star)/se_b0
+}
+
+
+beta0_star + quantile(Fstar,0.025)*se_b0_star
+beta0_star + quantile(Fstar,0.975)*se_b0_star
+
+confint(lm(medv~.,data=Boston))
+```
+The CI from the bootstrapped method and analytical formula are very similar 
+
+3.e
+```{r}
+umed = median(Boston$medv)
+umed
+```
+
+3.f
+```{r}
+B1 = 2000
+umed_boot = rep(NA, B)
+n = dim(Boston)[1]
+for(b in 1:B1){
+  index = sample(1:n,n,replace = TRUE)
+  bootsample1 = Boston[index,]
+  umed_boot[b] = median(bootsample1$medv)
+}
+mean(umed_boot)
+sqrt(sum((umed_boot-median(umed_boot))^2)/(B1-1))
+```
+
+3.g
+```{r}
+u.1 = (Boston$medv)
+u.10 <- quantile(u.1, 0.1)
+
+```
+3.h
+```{r}
+B2 = 2000
+u.10_boot = rep(NA, B)
+n = dim(Boston)[1]
+for(b in 1:B2){
+  index = sample(1:n,n,replace = TRUE)
+  bootsample2 = Boston[index,]
+  u.10_boot[b] = median(bootsample2$medv)
+}
+sqrt(sum((u.10_boot-median(u.10_boot))^2)/(B2-1))
+```
+
+
+.---------------------------------------------------------------------
+4.a
+since we are looking for one index out of n we have a 1 in n chance of getting it the first time.
+P(n=n, B=1) = 1 - (1 - 1/n)^1 or 1/n
+
+4.b
+since we are can get anything othere than one index out of n we have a 1 in n chance of getting it the first time so minus that from the total probability.
+P(n) = 1 - 1/n
+
+4.c
+the chance of j not being in the bootsample would be the chance of it not being select each time multiplied by each attempt(B)  
+P(n) = (1 - 1/n)^B
+
+4.d
+p(n=5, B = n) = 1 - (4/5)^5 = 0.67232
+
+4.e
+p(n=100, B = n) = 1 - (99/100)100B = ~0.63397
+
+4.f
+p(n=10000, B = n) = 1 - (9999/10000)^10000 = ~0.63214
+
+4.g
+```{r}
+n = 1:100000
+j = 1
+probabilities = numeric(length = 100000)
+for (i in 1:100000) {
+  probabilities[i] = 1 - (1 - (1/i))^i
+}
+plot(n, probabilities)
+```
+Once you pass 100 your probiblity only slightly decreases.
+
+4.h
+```{r}
+results <- rep(NA, 10000)
+for(i in 1:10000){
+results[i] <- sum(sample(1:100, rep=TRUE) == 5) > 0
+}
+probability = mean(results)
+probability
+```
+This model allows us to be sure our predictors were on the right track by giving us an idea of what the prob should be compared to what we calculated. It also verifies the idea that it only slowly decreases in probility when it passes 100 and goes toward 100,000
+

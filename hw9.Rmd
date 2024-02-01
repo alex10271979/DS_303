@@ -1,0 +1,190 @@
+---
+title: "Hw9"
+author: "Alexis Maldonado"
+date: "11/6/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("/Users/alexrubio/Downloads/mnist_script.R", echo = TRUE)
+```
+
+
+1.a
+```{r}
+library(class)
+library(caret)
+
+
+trains = sample(1:dim(train$x)[1], 3000, replace=FALSE)
+tests = sample(1:dim(test$x)[1], 100, replace=FALSE)
+
+K = c(1, 5, 7, 9)
+Xtrain = train$x[trains, ]
+ytrain = train$y[trains]
+Xtest = test$x[tests, ]
+ytest = test$y[tests]
+flds = createFolds(ytrain, k = 10, list = TRUE, returnTrain = FALSE)
+
+cv_error = matrix(NA, 10, 4)
+
+for(j in 1:4){
+  k = K[j]
+  for(i in 1:10){
+    test_index <- flds[[i]]
+    testX <- Xtrain[test_index, ]
+    trainX <- Xtrain[-test_index, ]
+    
+    trainY <- ytrain[-test_index]
+    testY <- ytrain[test_index]
+    knn.pred <- knn(trainX, testX, trainY, k = k)
+    cv_error[i, j] <- mean(testY != knn.pred)
+  }
+}
+
+apply(cv_error,2,mean)
+
+knn.pred = knn(trainX,testX,trainY,k=10)
+table(knn.pred, testY)
+mean(testY != knn.pred)
+
+```
+
+1.b
+Error in lda.default(x, grouping, ...) : 
+Lda doesnt like the format of which the data is currrently in 
+```{r}
+library(MASS)
+##lda.fit = lda(trainY ~ ., data = data.frame(trainX, trainY))
+##lda.pred = predict(lda_model, data.frame(Xtest))
+##lda_confusion_matrix = table(lda.pred$class, ytest)
+##(ytest != lda.pred$class)
+
+```
+
+1.c
+Some advantages of KNN are that we dont need to really know much of the data since we have no assumptions. 
+
+
+.----------------------------
+
+2.a
+```{r, include=FALSE}
+source("/Users/alexrubio/Downloads/third.R", echo = TRUE)
+```
+
+```{r}
+head(train,5)
+```
+a bunch of numbers
+
+2.b
+```{r}
+library(class)
+library(caret)
+
+
+trains = sample(1:dim(train$x)[1], 3000, replace=FALSE)
+tests = sample(1:dim(test$x)[1], 100, replace=FALSE)
+
+K = c(1, 5, 7, 9)
+Xtrain = train$x[trains, ]
+ytrain = train$y[trains]
+Xtest = test$x[tests, ]
+ytest = test$y[tests]
+flds = createFolds(ytrain, k = 10, list = TRUE, returnTrain = FALSE)
+
+cv_error = matrix(NA, 10, 4)
+
+for(j in 1:4){
+  k = K[j]
+  for(i in 1:10){
+    test_index <- flds[[i]]
+    testX <- Xtrain[test_index, ]
+    trainX <- Xtrain[-test_index, ]
+    
+    trainY <- ytrain[-test_index]
+    testY <- ytrain[test_index]
+    knn.pred <- knn(trainX, testX, trainY, k = k)
+    cv_error[i, j] <- mean(testY != knn.pred)
+  }
+}
+
+apply(cv_error,2,mean)
+
+knn.pred = knn(trainX,testX,trainY,k=10)
+table(knn.pred, testY)
+mean(testY != knn.pred)
+``` 
+the error rate is slightly higher other than that they are pretty similar
+
+.----------------------------
+
+3.a
+As talked about in class as the number of predictors increases it becomes difficult to find the nearest neighbors. This is known as the curse of dimensionality and it makes the models less meaningful.
+
+3.b
+i. LDA since it could be a linear relationship between the predictors
+ii.Logistic since the predictors are more random there fore dont necessarily look like it would be linear.
+iii. KNN since it is not linear and the decision boundary is complex knn would outperform the other.
+
+.----------------------------
+
+4.a
+When K = 1, we would classify it with Y = 1
+
+4.b
+When K = 3, we would classify it with Y = 1
+
+4.c
+As K increase the variance beings to decrease but the bias increases and viceversa, so when choosing you must take both into consideration depending on if you model neeeds some bias or not to reduce variance.
+
+.----------------------------
+
+5.a
+False Positive, the bigger mistake would be that a meaningful email would be labeled as spam, to accommodate to this we could raise the threshold to make lower the amount of wrong labeling for importorant email a down side to this will be there will be more spam that passes as not spam.
+```{r}
+spam = read.csv('/Users/alexrubio/Downloads/Ds303/spambase.data',header=FALSE)
+emails = nrow(spam)
+s = sum(spam$V58 == 1)
+ns = sum(spam$V58 == 0)
+
+ps = s / emails
+psn = ns / emails
+
+set.seed(190)
+train = sample(1:nrow(spam),nrow(spam)/2, replace=FALSE)
+test = (-train)
+
+train_data = spam[train,]
+test_data = spam[test,]
+
+emailsTrain = nrow(train_data)
+sTrain = sum(train_data$V58 == 1)
+nsTrain = sum(train_data$V58 == 0)
+
+Tps = sTrain / emailsTrain
+Tpsn = nsTrain / emailsTrain
+glm.fit = glm(V58 ~., data = test_data, subset = train, family = 'binomial')
+glm.prob = predict(glm.fit,spam[test,], type='response')
+
+```
+
+5.b
+```{r}
+library(ROCR)
+
+ROCRpred <- prediction(glm.prob,spam[test,]$V58)
+plot(performance(ROCRpred,'tpr','fpr'))
+plot(performance(ROCRpred,'tpr','fpr'),colorize=TRUE,
+     print.cutoffs.at=seq(0,1,by=0.05), tzext.adj=c(-0.2,1.7))
+
+plot(performance(ROCRpred,'tnr','fnr'),colorize=TRUE,print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7))
+
+
+```
+
+5.c
+```{r}
+```

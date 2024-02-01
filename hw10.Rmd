@@ -1,0 +1,196 @@
+---
+title: "hw10"
+author: "Alexis Maldonado"
+date: "11/13/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1.a
+Majority: The final classification will be red since it has 6/10 above 0.5.
+
+Average:  The final classification will be green since it has an average that is below 0.5.
+
+1.b
+if X1 < 1
+  if X2 < 1
+    if X1 > 0
+      if X2 > 0
+        0
+      else
+        10
+    else
+      3
+  else
+    15
+else 
+  5
+
+1.c
+If x2 < 1 then x2 < 2 will always be true, so -1.06 and 0.21 can be ignored.
+```{r}
+plot(NA, NA, type = "n", xlim = c(-1, 2), ylim = c(0, 3), xlab = "X1", ylab = "X2")
+lines(x = c(0, 0), y = c(1, 2))
+lines(x = c(-1, 2), y = c(1, 1))
+lines(x = c(-1, 2), y = c(2, 2))
+lines(x = c(1, 1), y = c(0, 1))
+text(x = 0.5, y = 2.5, labels = c(2.49))
+text(x = 1.5, y = 0.5, labels = c(0.63))
+text(x = 0, y = 0.5, labels = c(-1.8))
+text(x = 1, y = 1.5, labels = c(0.21))
+text(x = -0.5, y = 1.5, labels = c(-1.06))
+```
+1.d
+No bagging can not result in higher variance than an individual tree since bagging takes the average of a bunch of trees it becomes less sensitive to the changes in training data lowering variance from a singular tree.
+
+.-----------------------------------------------------------
+
+2.a
+```{r}
+set.seed(18)
+library(ISLR2)
+train = sample(1:nrow(OJ),800)
+test = OJ[-train, ]
+```
+
+2.b
+0.1688 training error
+7 terminal nodes
+```{r}
+library(tree)
+tree.oj = tree(Purchase~.,data=OJ, subset=train)
+tree.oj
+summary(tree.oj)
+```
+
+2.c
+13) PriceDiff > 0.015 160  162.90 CH ( 0.7937 0.2062 ) *
+When priceDiff is greater than 0.015 there is a 79.37 percent chance that CH will be purchased.
+
+2.d
+For the most part it looks like if LoyalCh is below 0.48 MM will be purchased and if its above Ch will usaully be purchased but no always.
+```{r}
+plot(tree.oj)
+text(tree.oj,pretty=0)
+```
+
+2.e
+
+```{r}
+pred = predict(tree.oj,newdata=test)
+Y.test = test$Purchase
+mean((as.numeric(pred) - as.numeric(Y.test))^2)
+```
+
+2.f
+```{r}
+set.seed(18)
+cv.oj = cv.tree(tree.oj) 
+cv.oj
+plot(cv.oj$size,cv.oj$dev,type='b')
+```
+
+2.g
+5 was the smallest optimal size 
+
+2.h
+```{r}
+prune.oj = prune.tree(tree.oj,best=5) 
+
+plot(prune.oj)
+text(prune.oj,pretty=0)
+```
+
+2.i
+The training error in the pruned is higher, is not what we expect but is not too much higher, so it could be okay aslong as it is able consistently to get lower error in the test.
+```{r}
+summary(tree.oj)
+summary(prune.oj)
+```
+
+2.j
+The test error in the pruned is lower, which is was we hope to see meaning the the pruning helped out prediction.
+```{r}
+pred = predict(tree.oj,newdata=test)
+Y.test = test$Purchase
+mean((as.numeric(pred) - as.numeric(Y.test))^2)
+
+pred = predict(prune.oj,newdata=test)
+Y.test = test$Purchase
+mean((as.numeric(pred) - as.numeric(Y.test))^2)
+```
+
+.-----------------------------------------------------------
+
+3.a
+```{r, include=FALSE}
+setwd("/Users/alexrubio/Downloads")
+Carseats <- read.csv("Carseats.csv")
+```
+
+```{r}
+Carseats$High <- factor(ifelse(Carseats$Sales <=8, "No", "Yes"))
+cs <- na.omit(Carseats)
+
+train <- sample(1:nrow(cs), 200)
+test <- cs[-train, ]
+```
+
+3.b
+Didnt go through did all I was able without it not sure what was wrong
+Warning in tree(High ~ . - Sales, split = c("gini"), data = cs, subset = train) :
+  NAs introduced by coercion
+Error in tree(High ~ . - Sales, split = c("gini"), data = cs, subset = train) : 
+  cannot use 'Gini' with missing values
+tree.cs = tree(High ~ .-Sales, split=c("gini"), data= cs, subset=train)
+
+
+3.c
+
+cv.cs = cv.tree(tree.cs)
+plot(cv.cs)
+
+prune.cs = prune.tree(tree.cs,best=5) 
+
+plot(prune.cs)
+text(prune.cs,pretty=0)
+summary(prune.cs)
+
+
+3.d
+
+library(randomForest)
+bag.cs = randomForest(High~.,data=cs, subset = train, mtry = 12, importance = TRUE, ntree=500)
+
+importance(bag.boston)
+
+
+3.e
+```{r}
+```
+
+3.f
+
+
+3.g
+
+
+3.h
+```{r}
+library(randomForest)
+rf.cs = randomForest(High ~., data = cs, mtry = 6, importance = TRUE, ntree = 500, keep.inbag=TRUE)
+
+allpred = predict(rf.cs,newdata=cs,predict.all=TRUE)$individual
+
+n = dim(cs)[1]
+
+yhat = rep(NA,n)
+for (i in 1:n) {
+ yhat[i] <- as.character(rownames(table(allpred[ , which(rf.cs$inbag[i, ] == 0)]))[which.max(table(allpred[i, which(rf.cs$inbag[i, ] == 0)]))])
+}
+
+mean(yhat != cs$High)
+```

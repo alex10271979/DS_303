@@ -1,0 +1,200 @@
+---
+title: "hw6"
+author: "Alexis Maldonado"
+date: "10/8/2023"
+id: "447731321"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(leaps)
+library(ISLR2)
+library(glmnet)
+
+```
+
+1.a 
+Since in part 2 we made a model that too in to account both genders and in part 3 we created 2 models divioding the data set to take account for each gender the predictors are going to have different influences between part and part 3 leading to a difference in estimated value. 
+
+1.b
+fit_females: Yhat = -4515.22 + 246.92*age + 241.32*bmi
+fit_males: Yhat = -4515.22 - 3497.572 + (246.919 + -8.287)*age + (241.32+168.55)*bmi
+```{r}
+insurance = read.csv("/Users/alexrubio/Downloads/Ds 303/insurance.csv")
+insurance$gender = as.factor(insurance$gender)
+insurance$region = as.factor(insurance$region)
+insurance$smoker = as.factor(insurance$smoker)
+fit =  lm ( charges ~ age + bmi + gender + age*gender + bmi*gender, data = insurance)
+```
+
+1.c
+To see if an interaction term is beneficial in the model you could run both models one with an interaction term and one with out one and compare both models with AIC/BIC since they are different lengths .
+```{r}
+regfit = regsubsets(charges ~ age + bmi + gender,data=insurance,nbest=1,nvmax=3)
+regfit.sum = summary(regfit)
+regfit.sum
+
+regfit1 = regsubsets(charges ~ age + bmi + gender + age*gender + bmi*gender,data=insurance, nbest = 1, nvmax = 5)
+regfit.sum1 = summary(regfit1)
+regfit.sum1
+
+n = dim(insurance)[1]
+p = rowSums(regfit.sum$which)
+p1 = rowSums(regfit.sum1$which)
+
+
+rss = regfit.sum$rss
+AIC = n*log(rss/n) + 2*(p)
+BIC = n*log(rss/n) + (p)*log(n)
+rss1 = regfit.sum1$rss
+AIC1 = n*log(rss1/n) + 2*(p1)
+BIC1 = n*log(rss1/n) + (p1)*log(n)
+AIC
+AIC1
+BIC
+BIC1
+```
+
+
+2.a
+yes, based on what we learned in class multicollinearity can make our data harder to correctly give significance towards an independent variable that is highly correlated to with another other.
+
+2.b
+```{r}
+set.seed(42)
+x1 = runif(100)
+x2 = 0.8*x1 + rnorm(100,0,0.1)
+
+beta0 = 3
+beta1 = 2
+beta2 = 4
+
+error = rnorm(100, 0, 2) 
+Y = beta0 + beta1 * x1 + beta2 * x2 + error
+cor(x1, x2)
+```
+
+2.c
+```{r}
+train_index = sample(1:100, 0.8 * 100)
+train = data.frame(Y = Y[train_index], x1 = x1[train_index], x2 = x2[train_index])
+test = data.frame(Y = Y[-train_index], x1 = x1[-train_index], x2 = x2[-train_index])
+
+model = lm(Y ~ x1+x2, data = train)
+
+
+yhat = predict(model, newdata = test)
+mse = mean((yhat - test$Y)^2)
+mse
+```
+
+2.d
+```{r}
+mse_values = numeric(2500)
+for (i in 1:2500) {
+    Y = beta0 + beta1 * x1 + beta2 * x2 + error
+    train_index = sample(1:100, 0.8 * 100)
+    train = data.frame(Y = Y[train_index], x1 = x1[train_index], x2 = x2[train_index])
+    test = data.frame(Y = Y[-train_index], x1 = x1[-train_index], x2 = x2[-train_index])
+    model = lm(Y ~ x1 + x2, data = train)
+    yhat = predict(model, newdata = test)
+    mse_values[i] = mean((yhat - test$Y)^2)
+}
+mean(mse_values)
+hist(mse_values)
+```
+
+2.e
+```{r}
+set.seed(24)
+x1 = runif(100)
+x2 = rnorm(100,0,1)
+
+beta0 = 3
+beta1 = 2
+beta2 = 4
+
+error = rnorm(100, 0, 2) 
+Y2 = beta0 + beta1 * x1 + beta2 * x2 + error
+cor(x1, x2)
+```
+
+2.f
+```{r}
+mse_values2 = numeric(2500)
+for (i in 1:2500) {
+    Y2 = beta0 + beta1 * x1 + beta2 * x2 + error
+    train_i = sample(1:100, 0.8 * 100)
+    train2 = data.frame(Y2 = Y2[train_i], x1 = x1[train_i], x2 = x2[train_i])
+    test2 = data.frame(Y2 = Y2[-train_i], x1 = x1[-train_i], x2 = x2[-train_i])
+    model2 = lm(Y2 ~ x1 + x2, data = train2)
+    yhat2 = predict(model2, newdata = test2)
+    mse_values2[i] = mean((yhat2 - test2$Y2)^2)
+}
+mean(mse_values2)
+hist(mse_values2)
+```
+
+2.g
+With the results from these two models we can infer that multicollinearity is not a problem over all since both mse's were very similar. 
+
+3.a
+```{r}
+set.seed(12)
+x = model.matrix(Apps~.,data= College)[,-1] 
+Y = College$Apps
+
+grid = 10^seq(10,-2,length=100)
+
+```
+
+3.b
+```{r}
+college_train = sample(1:nrow(x), nrow(x)/2)
+college_test=(-college_train)
+Y.test = Y[college_test]
+```
+
+3.c
+```{r}
+rmodel = cv.glmnet(x[college_train,],Y[college_train],alpha = 0, lambda = grid, nfolds =5) 
+bestl = rmodel$lambda.min
+bestl
+```
+
+3.d
+```{r}
+coefl = coef(rmodel, s = bestl)[-1]
+l2 = sqrt(sum(coefl^2))
+l2
+```
+
+3.e
+```{r}
+yhat = predict(rmodel, s = bestl,newx = x[college_test,])
+mean((yhat-Y.test)^2)
+```
+
+3.f
+```{r}
+lmodel = cv.glmnet(x[college_train,],Y[college_train],alpha = 1, lambda = grid, nfolds =5) 
+bestl2 = lmodel$lambda.min
+bestl2
+```
+
+3.g
+```{r}
+coefl2 = coef(lmodel, s = bestl2)[-1]
+l1 = sum(coefl2^2)
+l1
+```
+
+3.h
+```{r}
+yhat1 = predict(lmodel, s = bestl2, newx = x[college_test,])
+mean((yhat1 -Y.test)^2)
+```
+
+3.i
+Between the two there is not too big of a difference, ridge was smaller by only a bit which make sense. OVer all however the mse is very high so we can assume this model still needs more work since it is not able to predict acccurately

@@ -1,0 +1,221 @@
+---
+title: "hw8"
+author: "Alexis Maldonado"
+date: "10/24/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1.a
+When fitting a logistic regression model we use the maximum likelihood estimation on a training data to try to find the function that will have the hightst probabililty of occurring in that data set.
+
+1.b
+The one with the
+
+1.c
+misclassification rate: 0.26
+A false negative is more troubling since they could be sick by be labeled healthy
+You could decrease the rate by lowering the probability threshold.
+Overall this will lead less misclassifaction for sick people, but could raise misclassications for the people who are healthy.
+
+1.d
+i = 0.3775407
+ii = 50 hours
+```{r}
+beta0 = -6
+beta1 = 0.05
+beta2 = 1
+
+hours_studied = 40
+GPA = 3.5
+
+px = exp(beta0 + beta1 * hours_studied + beta2 * GPA)/ (1 +exp(beta0 + beta1 * hours_studied + beta2 * GPA))
+px
+hours_studied50 = 50
+px50 = exp(beta0 + beta1 * hours_studied50 + beta2 * GPA)/ (1 +exp(beta0 + beta1 * hours_studied50 + beta2 * GPA))
+px50
+```
+
+1.e
+We would expect LDA to preform better since the variance is held constant causing there to be low variance. 
+
+1.f
+We would expect LDA to preform better becausen QDA could be more prone to overfit the model.
+
+1.g
+??
+Can not converge because there is no over lap for the 
+```{r}
+set.seed(123)
+n = 16
+X1 = rnorm(n, 0, 1)
+X2 = rnorm(n, 0, 1)
+Y = c(rep(0, n/2), rep(1, n/2))
+data = data.frame(X1, X2, Y)
+model = glm(Y ~ X1 + X2, data = data, family = binomial(link = "logit"))
+summary(model)
+
+set.seed(123)
+
+# Create a dataset with 16 observations
+n <- 16
+data <- data.frame(
+  X1 = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+  X2 = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+  Y = rep(c(0, 1), each = 8)
+)
+
+# Fit a logistic regression model
+model <- glm(Y ~ X1 + X2, data = data, family = binomial(link = "logit"))
+
+# Display the coefficients
+summary(model)
+```
+
+1.h
+??
+
+next problem------------------------------
+
+2.a
+spam = 0.3940448
+not spam = 0.6059552
+```{r}
+spam = read.csv('/Users/alexrubio/Downloads/Ds 303/spambase.data',header=FALSE)
+emails = nrow(spam)
+s = sum(spam$V58 == 1)
+ns = sum(spam$V58 == 0)
+
+ps = s / emails
+psn = ns / emails
+
+ps
+psn
+```
+
+2.b
+spam = 0.3947826
+not spam = 0.6052174
+```{r}
+set.seed(190)
+train = sample(1:nrow(spam),nrow(spam)/2, replace=FALSE)
+test = (-train)
+
+train_data = spam[train,]
+test_data = spam[test,]
+
+emailsTrain = nrow(train_data)
+sTrain = sum(train_data$V58 == 1)
+nsTrain = sum(train_data$V58 == 0)
+
+Tps = sTrain / emailsTrain
+Tpsn = nsTrain / emailsTrain
+
+Tps
+Tpsn
+```
+
+2.c
+```{r}
+glm.fit = glm(V58 ~., data = test_data, subset = train, family = 'binomial')
+glm.prob = predict(glm.fit,spam[test,], type='response')
+head(glm.prob, 10)
+```
+
+2.d
+```{r}
+glm.prob = predict(glm.fit ,spam[test,], type='response') 
+glm.pred = rep(0,dim(test_data)[1])
+glm.pred[glm.prob > 0.5] = 1
+table(glm.pred,spam[test,]$V58)
+mc = 1 - mean(glm.pred == test_data$V58)
+```
+??
+
+2.e
+The bigger mistake would be that a meaningful email would be labeled as spam, to accommodate to this we could raise the threshold to make lower the amount of wrong labeling for importorant email a down side to this will be there will be more spam that passes as not spam
+
+next problem------------------------------
+
+3.a
+```{r}
+library(ISLR2)
+
+set.seed(1)
+train = sample(1:nrow(Weekly),nrow(Weekly)/2, replace=FALSE)
+test = (-train)
+
+train_set = Weekly[train,]
+test_set = Weekly[test,]
+
+glm.fit = glm(Direction~Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly,subset = train, family = 'binomial')
+summary(glm.fit)
+```
+
+3.b
+```{r}
+glm.prob = predict(glm.fit ,Weekly,type='response') 
+glm.pred = rep("Down",dim(Weekly)[1])
+glm.pred[glm.prob > 0.5] = "Up"
+table(glm.pred, Weekly$Direction)
+1 - mean(glm.pred == Weekly$Direction)
+```
+
+3.c
+```{r}
+set.seed(1)
+train = (Weekly$Year < 2008)
+train_set = Weekly[train, ]
+test_set = Weekly[!train,]
+
+glm.fit = glm(Direction~ Lag2 , data = train_set,subset = train, family = 'binomial')
+
+glm.prob = predict(glm.fit , test_set,type='response') 
+glm.pred = rep("Down",length(test_set))
+glm.pred[glm.prob > 0.5] = "Up"
+table(glm.pred, test_set$Direction)
+1 - mean(glm.pred == test_set$Direction)
+```
+
+3.d
+```{r}
+library(MASS)
+lda.fit = lda(Direction~ Lag2,data=Weekly, subset=train)
+lda.pred = predict(lda.fit, Weekly)
+lda.pred$posterior[1:10,]
+table(lda.pred$class,Weekly$Direction)
+mean(lda.pred$class!=Weekly$Direction)
+mean(lda.pred$class==Weekly$Direction)
+```
+3.e
+```{r}
+qda.fit = qda(Direction~Lag1,data=Weekly, subset=train)
+qda.pred = predict(qda.fit,Weekly)
+
+table(qda.pred$class,Weekly$Direction)
+
+mean(qda.pred$class==Weekly$Direction)
+```
+
+3.f
+```{r}
+library(MASS)
+library(e1071)
+nb.fit = naiveBayes(Direction~  Lag2, data=Weekly, subset = train)
+nb.class = predict(nb.fit, train_set)
+table(nb.class, train_set$Direction)
+mean(nb.class == train_set$Direction)
+ 
+# KlaR cause me probelms when tring to load from package so used e1071
+#library(e1071)
+#nb.prob = predict(nb.fit, Smarket.2005, type = 'raw')
+#nb.fit2 = NaiveBayes(Direction ~ Lag1 , data=Weekly, subset=train, usekernel = TRUE)
+
+#nb2.class = predict(nb.fit2, Weekly)$class
+#nb2.prob = predict(nb.fit2, Weekly)$posterior
+#table(nb2.class, Weekly$Direction)
+#mean(nb2.class == Weekly$Direction)
+```

@@ -1,0 +1,298 @@
+---
+title: "HW4 ds 303"
+author: "Alexis Maldonado"
+date: "9/18/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+prostate = read.table("/Users/alexrubio/Downloads/Ds 303/prostate.data",header=TRUE)
+```
+
+1.a
+```{r}
+library(leaps)
+
+prostate = na.omit(prostate)
+best.model = regsubsets(lpsa -train ~., data = prostate ,nbest=1,nvmax=8)
+summary(best.model)
+val.errors = rep(NA,8)
+for(i in 1:8){
+  test.mat = model.matrix(lpsa - train~.,data=prostate)
+  
+  coef.m = coef(best.model,id=i)
+  
+  pred = test.mat[,names(coef.m)]%*%coef.m
+  val.errors[i] = mean((prostate$lpsa-pred)^2)
+}
+
+regfitt = regsubsets(lpsa- train~., data = prostate, nbest = 1, nvmax = 8)
+regfitt.sum = summary(regfitt)
+
+n = dim(prostate)[1]
+p = rowSums(regfitt.sum$which)
+adjr2 = regfitt.sum$adjr2
+cp = regfitt.sum$cp
+rss = regfitt.sum$rss
+AIC = n*log(rss/n) + 2*(p)
+BIC = n*log(rss/n) + (p)*log(n)
+
+cbind(AIC,BIC,adjr2,cp)
+
+which.min(AIC)
+which.min(BIC)
+which.max(adjr2)
+which.min(cp)
+
+coef(regfitt,5)
+coef(regfitt,3)
+coef(regfitt,6)
+```
+While AIC and cp agree on 5 the other 2 had different choices, because the two chose the 5th on and one 6th i would probably go with the 5th since it seems to be with a good range not too little but not too much.
+
+1.b
+```{r}
+n = dim(prostate)[1]
+
+train <- subset(prostate, train == TRUE)[, 1:9]
+test <- subset(prostate, train == FALSE)[, 1:9]
+
+val.errors = matrix(NA,9)
+
+  
+best.fit = regsubsets(lpsa ~. ,data=train,nbest=1,nvmax=9)
+  
+  for(i in 1:8){
+    test.mat = model.matrix(lpsa~.,data=train)
+    
+    coef.m = coef(best.fit,id=i)
+    
+    pred = test.mat[,names(coef.m)]%*%coef.m
+    val.errors[i] = mean((test$lpsa-pred)^2)
+  } 
+
+val.errors
+full.reg = regsubsets(lpsa~.,data=prostate,nvmax=9,nbest=1)
+coef(full.reg,1)
+
+```
+
+1.c
+```{r}
+k = 10
+folds = sample(1:k,nrow(prostate),replace=TRUE)
+
+val.errors = matrix(NA,8)
+
+for(j in 1:k){
+  test = prostate[folds==j,]
+  train = prostate[folds!=j,]
+  
+  best.fit = regsubsets(lpsa ~. -train,data=train,nbest=1,nvmax=8)
+  
+  for(i in 1:8){
+    test.mat = model.matrix(lpsa~.-train,data=test)
+    
+    coef.m = coef(best.fit,id=i)
+    
+    pred = test.mat[,names(coef.m)]%*%coef.m
+    val.errors[i] = mean((test$lpsa-pred)^2)
+  } 
+}
+
+val.errors
+full.reg = regsubsets(lpsa~. -train,data=prostate,nvmax=8,nbest=1)
+coef(full.reg,2)
+```
+---------------------------------------------------------
+
+2.a
+```{r}
+set.seed(1)
+
+p = 20
+n = 1000
+X = matrix(rnorm(n * p), nrow = n)
+error <- rnorm(1000,0,1) 
+beta = c(1, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4, 0, 0, 0, 0, 5)
+Y = X%*%beta + error
+data1 = data.frame(Y = Y, X)
+```
+
+2.b
+```{r}
+train_index = sample(1:1000,900,rep=FALSE)
+
+train = data1[train_index,]
+test = data1[-train_index,]
+```
+
+2.c
+```{r}
+bestfit = regsubsets(Y ~.,data=train,nbest=1,nvmax=19)
+bestfit.sum = summary(bestfit)
+rss = bestfit.sum$rss
+plot(1:19, rss)
+bestfit.sum$rss
+bestfit.sum$rss
+```
+
+2.d
+```{r}
+bestfitt = regsubsets(Y ~.,data=test,nbest=1,nvmax=19)
+bestfitt.sum = summary(bestfitt)
+rss = bestfitt.sum$rss
+plot(1:19, rss)
+```
+
+2.e
+19 has the smallest mse.
+
+
+2.f
+```{r}
+real = regsubsets(Y ~.,data= data1,nbest=1,nvmax=19)
+reall = summary(real)
+bestfitt.sum$rss
+reall$rss
+```
+The model mse is alot smaller than the true model mse meaning that it could be that it is very complexed we made it fit out test set a little too good.
+
+
+---------------------------------------------------------
+
+3.a
+K fold cross validation is implemented by divide the data into groups and allowing each fold to take turns being the test set, then running it through the proces and collecting the test mse.
+
+3.b
+The disadvantages to the validation set approach is we cant leverage all the data and the splits are inconsistent.
+
+The advantages of loocv is that we are able to go through all the data but a big disadvantage is the it is really computationally expansive
+
+3.c
+```{r}
+set.seed(1)
+x = rnorm(100)
+error = rnorm(100,0,1)
+y = x - 2 * x^2 + error
+data = data.frame(Y = y, x)
+```
+
+3.d
+```{r}
+model = lm(y ~ x)
+par(mfrow=c(2,2))
+plot(model)
+```
+residuals normally distributed,leverage has a couple of outlier but over all looks to follow the assumptions
+
+3.e
+```{r}
+MSE_M1 = numeric(100)  
+MSE_M2 = numeric(100)
+MSE_M3 = numeric(100)
+MSE_M4 = numeric(100)
+for(i in 1:100){
+  test = data[i,]
+  train = data[-i,]
+  data
+  
+  
+  M1 = lm(y ~ x,data=data)
+  M2 = lm(y ~ poly(x,2),data=data)
+  M3 = lm(y ~ poly(x,3),data=data)
+  M4 = lm(y ~ poly(x,4),data=data)
+  
+  M1_y = predict(M1,newdata=test)
+  M2_y = predict(M2,newdata=test)
+  M3_y = predict(M3,newdata=test)
+  M4_y = predict(M4,newdata=test)
+    
+  MSE_M1 = (test$y - M1_y)^2
+  MSE_M2 = (test$y - M2_y)^2
+  MSE_M3 = (test$y - M3_y)^2
+  MSE_M4 = (test$y - M4_y)^2
+}
+
+# linear models, use PRESS
+PRESS <- function(model,n) {
+    i <- residuals(model)/(1 - lm.influence(model)$hat)
+    sum(i^2)/n
+}
+
+
+PRESS(M1,n)
+PRESS(M2,n)
+PRESS(M3,n)
+PRESS(M4,n)
+```
+
+3.f
+```{r}
+set.seed(111)
+for(i in 1:n){
+  test = data[i,]
+  train = data[-i,]
+  
+  
+  M1 = lm(y ~ x,data=data)
+  M2 = lm(y ~ poly(x,2),data=data)
+  M3 = lm(y ~ poly(x,3),data=data)
+  M4 = lm(y ~ poly(x,4),data=data)
+  
+  M1_y = predict(M1,newdata=test)
+  M2_y = predict(M2,newdata=test)
+  M3_y = predict(M3,newdata=test)
+  M4_y = predict(M4,newdata=test)
+    
+  MSE_M1[i] = (test$y - M1_y)^2
+  MSE_M2[i] = (test$y - M2_y)^2
+  MSE_M3[i] = (test$y - M3_y)^2
+  MSE_M4[i] = (test$y - M4_y)^2
+}
+
+# linear models, use PRESS
+PRESS <- function(model,n) {
+    i <- residuals(model)/(1 - lm.influence(model)$hat)
+    sum(i^2)/n
+}
+
+
+PRESS(M1,n)
+PRESS(M2,n)
+PRESS(M3,n)
+PRESS(M4,n)
+```
+Yes they are the same because you run throught every single element so it will get added up to be the same.
+3.g
+Model 3 had the smallest, it was not what I expected since the it is one of the less less linearly growing ones.
+
+
+3.h
+Yes I agree with the conclusions that we were able to draw based on the cross validation results.
+
+---------------------------------------------------------
+
+4.a
+True, because each one of those looks at different things so you are not guaranteed that they will choose the same model.
+
+
+4.b
+True, the rss in a reduced model will always be bigger or equal to the rss in a full model.
+
+4.c
+True, the rss in a reduced model will always be bigger or equal to the rss in a full model.
+
+a
+Base on summaries of the best.model code we have done I beleive that it is true the the next model will include the variables in the model before since they probably have more significance hence why they were chosen first.
+
+b
+The advantage of using BIC and Aic over MSE is to be able to to test multiple models and determine which one is better while MSE allows you to know how good your model is.
+
+c
+I would disagree since we dont know how many variables there are we should  not assume that it is not meaningful at all.
+
